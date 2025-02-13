@@ -1,0 +1,61 @@
+version: '3.5'
+services:
+  squidex_mongo:
+    image: "mongo:6"
+    volumes:
+      - /etc/squidex/mongo/db:/data/db
+    networks:
+      - internal
+    restart: unless-stopped
+
+  keycloack_service:
+    image: "quay.io/keycloak/keycloak:26.1.1"
+    volumes:
+      - "/etc/squidex/keycloak/data:/opt/keycloak/data/import"
+    ports:
+      - "5489:8080"
+    command: start-dev --import-realm
+    environment:
+      - KC_BOOTSTRAP_ADMIN_USERNAME=admin
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=admin
+
+  squidex_squidex:
+    image: "squidex/squidex:7"
+    extra_hosts:
+      - "custom.local:host-gateway"
+    ports:
+      - "80:80"
+    environment:
+      - URLS__BASEURL=http://localhost
+      - EVENTSTORE__TYPE=MongoDB
+      - EVENTSTORE__MONGODB__CONFIGURATION=mongodb://squidex_mongo
+      - STORE__MONGODB__CONFIGURATION=mongodb://squidex_mongo
+      - IDENTITY__ADMINEMAIL=admin@admin.com
+      - IDENTITY__ADMINPASSWORD=password
+      - IDENTITY__GOOGLECLIENT=
+      - IDENTITY__GOOGLESECRET=
+      - IDENTITY__GITHUBCLIENT=
+      - IDENTITY__GITHUBSECRET=
+      - IDENTITY__MICROSOFTCLIENT=
+      - IDENTITY__MICROSOFTSECRET=
+      - IDENTITY__OIDCNAME=OIDC
+      - IDENTITY__OIDCAUTHORITY=http://custom.local:5489/realms/custom
+      - IDENTITY__OIDCCLIENT=custom-id
+      - IDENTITY__OIDCSECRET=
+      - IDENTITY__OIDCSCOPES__0=openid
+      - IDENTITY__OIDCSCOPES__1=email
+      - IDENTITY__OIDCRESPONSETYPE=code
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/healthz"]
+      start_period: 60s
+    depends_on:
+      - squidex_mongo
+    volumes:
+      - /etc/squidex/assets:/app/Assets
+    networks:
+      - internal
+    restart: unless-stopped
+    
+networks:
+  internal:
+    driver: bridge
