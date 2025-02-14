@@ -1,5 +1,6 @@
-# Интеграция OIDC (Keycloack + Auth0) авторизации в Squidex
+# Интеграция OIDC (Keycloack, Auth0) авторизации в Squidex + S3 
 
+Здесь описаны этапы настройки OIDC автоирзации для Squidex. Плюс показана конфигурация Squidex для взаимодействия с S3 хранилищем. 
 
 Keycloack реализует два стандарта протокола аутентификации:
 
@@ -151,3 +152,53 @@ docker compose up
 Вы авторизованы!
 
 ![Alt text](images/14.png)
+
+## Настройка S3 хранилища
+
+Конфигурация описана только на примере с Keycloack. В качестве S3-подобного хранилища был использован Docker образ MinIO.
+Squidex использует S3 хранилище только для хранения ресрсов (Assets), пожтому для проверки можно будет загрузить в ресурсы сайта какой нибудь файл. 
+
+Прежде всего нужно запустить контейнеры
+
+```bash
+cd s3
+docker compose up
+```
+
+Далее заходим в панель управления miniIO http://localhost:9001/ и создаем bucket (кнопка _Create Bucket_). 
+
+![Alt text](images/15.png)
+
+Пишем название и снова нажимаем _Create Bucket_
+
+![Alt text](images/16.png)
+
+Далее переходим на вкладку Accecc Keys и создаем ключи доступа. Нажимаем на кнопку _Create Access Key_ 
+
+Здесь в появившемся окне отобразятся _Access Key_ и _Secret Key_. Их нужно сохранить. Нажимаем _Create_. 
+
+![Alt text](images/17.png)
+
+Здесь MiniIO возможно предложит сохранить ключи. Скачиваем и закрываем предупреждение.
+
+Далее нужно указать полученные ключи и название bucket в конфигурации. Открываем yml файл и меняем значения на свои
+
+```yml
+- ASSETSTORE__TYPE=AmazonS3
+- ASSETSTORE__REGIONNAME=us-east-1
+- ASSETSTORE__AMAZONS3__SERVICEURL=http://host.docker.internal:9000
+- ASSETSTORE__AMAZONS3__BUCKET=test-bucket # название созданного bucket
+- ASSETSTORE__AMAZONS3__FORCEPATHSTYLE=true
+- ASSETSTORE__AMAZONS3__ACCESSKEY=MstsPeM5Il63FRqdGyY3 # accesskey
+- ASSETSTORE__AMAZONS3__SECRETKEY=HvaNhQ0zSFxMzz5SwRjwJuqhzDV0rAl1QeqCr2By # secretkey
+```
+
+Сохраняем файл. Если авторизация все еще не настроена, то нужно настроить по инструкции с Keycloack.
+
+Перезапускаем контейнеры. Переходим на сайт и пробуем загрузить файл в assets. 
+
+![Alt text](images/18.png)
+
+Переходим в админ панель хранилища > Object Browser > <наименование bucket>. Здесь должна появится папка squidex-assets со всеми ресурсами. 
+
+![Alt text](images/19.png)

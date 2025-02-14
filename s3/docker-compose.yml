@@ -8,6 +8,23 @@ services:
       - internal
     restart: unless-stopped
 
+  minio:
+    image: minio/minio
+    volumes:
+      - /etc/squidex/minio2:/data1
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: password
+    command: server --address ":9000" --console-address ":9001" /data1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
   keycloack_service:
     image: "quay.io/keycloak/keycloak:26.1.1"
     volumes:
@@ -47,6 +64,14 @@ services:
       - IDENTITY__OIDCSCOPES__0=openid
       - IDENTITY__OIDCSCOPES__1=email
       - IDENTITY__OIDCRESPONSETYPE=code
+      # S3 settings
+      - ASSETSTORE__TYPE=AmazonS3
+      - ASSETSTORE__REGIONNAME=us-east-1
+      - ASSETSTORE__AMAZONS3__SERVICEURL=http://host.docker.internal:9000
+      - ASSETSTORE__AMAZONS3__BUCKET=test-bucket
+      - ASSETSTORE__AMAZONS3__FORCEPATHSTYLE=true
+      - ASSETSTORE__AMAZONS3__ACCESSKEY=MstsPeM5Il63FRqdGyY3
+      - ASSETSTORE__AMAZONS3__SECRETKEY=HvaNhQ0zSFxMzz5SwRjwJuqhzDV0rAl1QeqCr2By
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80/healthz"]
       start_period: 60s
